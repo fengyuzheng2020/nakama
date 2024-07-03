@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package sample
 
 import (
 	"context"
@@ -53,6 +53,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	}); err != nil {
 		return err
 	}
+	logger.Info(" ------------------------------------------------------------------ ")
 
 	return nil
 }

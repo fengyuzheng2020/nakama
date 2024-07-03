@@ -104,3 +104,9 @@ For Windows development and environments where you want to use our official Dock
 Have a look in this repo for more example code on how to create and use various parts of the game server Go runtime support. The project implements a fully authoritative example of tic-tac-toe in Go, Lua and TS.
 
 https://github.com/heroiclabs/nakama-project-template
+
+## 脚本
+go build -buildmode=plugin -trimpath -o ./plugin_code.so sample.go && cp  ./plugin_code.so ../data/modules
+
+GOARCH=amd64 GOOS=darwin go build -buildmode=plugin -trimpath -o ./plugin_code.so sample.go && cp ./plugin_code.so ../data/modules
+

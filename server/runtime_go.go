@@ -28,6 +28,7 @@ import (
 	"github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/rtapi"
 	"github.com/heroiclabs/nakama-common/runtime"
+	sample "github.com/heroiclabs/nakama/v3/sample_go_module"
 	"github.com/heroiclabs/nakama/v3/social"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -2762,7 +2763,11 @@ func NewRuntimeProviderGo(ctx context.Context, logger, startupLogger *zap.Logger
 	ctx = NewRuntimeGoContext(ctx, node, version, env, RuntimeExecutionModeRunOnce, nil, nil, 0, "", "", nil, "", "", "", "")
 
 	startupLogger.Info("Initialising Go runtime provider", zap.String("path", rootPath))
-
+	err := sample.InitModule(ctx, runtimeLogger, db, nk, initializer)
+	if err != nil {
+		startupLogger.Fatal("Error returned by InitModule function in Go module", zap.String("name", "sample"), zap.Error(err))
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	modulePaths := make([]string, 0)
 	for _, path := range paths {
 		// Skip everything except shared object files.
