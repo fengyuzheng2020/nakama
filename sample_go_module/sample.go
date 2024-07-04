@@ -42,9 +42,11 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	}); err != nil {
 		return err
 	}
+	// 开始连接
 	if err := initializer.RegisterEventSessionStart(eventSessionStart); err != nil {
 		return err
 	}
+	// 结束连接
 	if err := initializer.RegisterEventSessionEnd(eventSessionEnd); err != nil {
 		return err
 	}
@@ -65,7 +67,10 @@ func rpcEcho(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.
 
 func rpcCreateMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 
-	matchID, err := nk.MatchCreate(ctx, "match", map[string]interface{}{})
+	// 要和注册的match名称一致
+	matchID, err := nk.MatchCreate(ctx, "match", map[string]interface{}{
+		"debug": true,
+	})
 
 	if err != nil {
 		return "", err
