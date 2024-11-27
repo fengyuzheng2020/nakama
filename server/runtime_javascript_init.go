@@ -83,9 +83,10 @@ type RuntimeJavascriptInitModule struct {
 	announceCallbackFn func(RuntimeExecutionMode, string)
 	storageIndex       StorageIndex
 	ast                *ast.Program
+	config             Config
 }
 
-func NewRuntimeJavascriptInitModule(logger *zap.Logger, ast *ast.Program, storageIndex StorageIndex, callbacks *RuntimeJavascriptCallbacks, matchCallbacks *RuntimeJavascriptMatchHandlers, announceCallbackFn func(RuntimeExecutionMode, string)) *RuntimeJavascriptInitModule {
+func NewRuntimeJavascriptInitModule(logger *zap.Logger, config Config, ast *ast.Program, storageIndex StorageIndex, callbacks *RuntimeJavascriptCallbacks, matchCallbacks *RuntimeJavascriptMatchHandlers, announceCallbackFn func(RuntimeExecutionMode, string)) *RuntimeJavascriptInitModule {
 	return &RuntimeJavascriptInitModule{
 		Logger:             logger,
 		storageIndex:       storageIndex,
@@ -93,11 +94,13 @@ func NewRuntimeJavascriptInitModule(logger *zap.Logger, ast *ast.Program, storag
 		Callbacks:          callbacks,
 		MatchCallbacks:     matchCallbacks,
 		ast:                ast,
+		config:             config,
 	}
 }
 
 func (im *RuntimeJavascriptInitModule) mappings(r *goja.Runtime) map[string]func(goja.FunctionCall) goja.Value {
 	return map[string]func(goja.FunctionCall) goja.Value{
+		"getConfig":                                       im.getConfig(r),
 		"registerRpc":                                     im.registerRpc(r),
 		"registerRtBefore":                                im.registerRtBefore(r),
 		"registerRtAfter":                                 im.registerRtAfter(r),
@@ -113,6 +116,8 @@ func (im *RuntimeJavascriptInitModule) mappings(r *goja.Runtime) map[string]func
 		"registerMatch":                                   im.registerMatch(r),
 		"registerBeforeGetAccount":                        im.registerBeforeGetAccount(r),
 		"registerAfterGetAccount":                         im.registerAfterGetAccount(r),
+		"registerBeforeGetMatchmakerStats":                im.registerBeforeGetMatchmakerStats(r),
+		"registerAfterGetMatchmakerStats":                 im.registerAfterGetMatchmakerStats(r),
 		"registerBeforeUpdateAccount":                     im.registerBeforeUpdateAccount(r),
 		"registerAfterUpdateAccount":                      im.registerAfterUpdateAccount(r),
 		"registerBeforeDeleteAccount":                     im.registerBeforeDeleteAccount(r),
@@ -135,6 +140,8 @@ func (im *RuntimeJavascriptInitModule) mappings(r *goja.Runtime) map[string]func
 		"registerAfterAuthenticateGoogle":                 im.registerAfterAuthenticateGoogle(r),
 		"registerBeforeAuthenticateSteam":                 im.registerBeforeAuthenticateSteam(r),
 		"registerAfterAuthenticateSteam":                  im.registerAfterAuthenticateSteam(r),
+		"registerBeforeSessionRefresh":                    im.registerBeforeSessionRefresh(r),
+		"registerAfterSessionRefresh":                     im.registerAfterSessionRefresh(r),
 		"registerBeforeListChannelMessages":               im.registerBeforeListChannelMessages(r),
 		"registerAfterListChannelMessages":                im.registerAfterListChannelMessages(r),
 		"registerBeforeListFriends":                       im.registerBeforeListFriends(r),
@@ -284,6 +291,106 @@ func (im *RuntimeJavascriptInitModule) Constructor(r *goja.Runtime) (*goja.Objec
 	return r.New(r.ToValue(constructor))
 }
 
+func (im *RuntimeJavascriptInitModule) getConfig(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
+	return func(f goja.FunctionCall) goja.Value {
+		rnc, err := im.config.GetRuntimeConfig()
+		if err != nil {
+			panic(r.NewGoError(err))
+		}
+
+		cfgObj := r.NewObject()
+		_ = cfgObj.Set("name", rnc.GetName())
+		_ = cfgObj.Set("shutdown_grace_sec", rnc.GetShutdownGraceSec())
+
+		lgCfg := r.NewObject()
+		_ = lgCfg.Set("level", rnc.GetLogger().GetLevel())
+		_ = cfgObj.Set("logger", lgCfg)
+
+		sessCfg := r.NewObject()
+		_ = sessCfg.Set("encryption_key", rnc.GetSession().GetEncryptionKey())
+		_ = sessCfg.Set("token_expiry_sec", rnc.GetSession().GetTokenExpirySec())
+		_ = sessCfg.Set("refresh_encryption_key", rnc.GetSession().GetRefreshEncryptionKey())
+		_ = sessCfg.Set("refresh_token_expiry_sec", rnc.GetSession().GetRefreshTokenExpirySec())
+		_ = sessCfg.Set("single_socket", rnc.GetSession().GetSingleSocket())
+		_ = sessCfg.Set("single_match", rnc.GetSession().GetSingleMatch())
+		_ = sessCfg.Set("single_party", rnc.GetSession().GetSingleParty())
+		_ = sessCfg.Set("single_session", rnc.GetSession().GetSingleSession())
+		_ = cfgObj.Set("session", sessCfg)
+
+		socketCfg := r.NewObject()
+		_ = socketCfg.Set("server_key", rnc.GetSocket().GetServerKey())
+		_ = socketCfg.Set("port", rnc.GetSocket().GetPort())
+		_ = socketCfg.Set("address", rnc.GetSocket().GetAddress())
+		_ = socketCfg.Set("protocol", rnc.GetSocket().GetProtocol())
+		_ = cfgObj.Set("socket", socketCfg)
+
+		// Social
+		steamCfg := r.NewObject()
+		_ = steamCfg.Set("publisher_key", rnc.GetSocial().GetSteam().GetPublisherKey())
+		_ = steamCfg.Set("app_id", rnc.GetSocial().GetSteam().GetAppID())
+
+		fbInstantCfg := r.NewObject()
+		_ = fbInstantCfg.Set("app_secret", rnc.GetSocial().GetFacebookInstantGame().GetAppSecret())
+
+		fbLimitedCfg := r.NewObject()
+		_ = fbLimitedCfg.Set("app_id", rnc.GetSocial().GetFacebookLimitedLogin().GetAppId())
+
+		appleCfg := r.NewObject()
+		_ = appleCfg.Set("bundle_id", rnc.GetSocial().GetApple().GetBundleId())
+
+		socialCfg := r.NewObject()
+		_ = socialCfg.Set("steam", steamCfg)
+		_ = socialCfg.Set("facebook_instant_game", fbInstantCfg)
+		_ = socialCfg.Set("facebook_limited_login", fbLimitedCfg)
+		_ = socialCfg.Set("apple", appleCfg)
+		_ = cfgObj.Set("social", socialCfg)
+
+		runtimeCfg := r.NewObject()
+		_ = runtimeCfg.Set("env", rnc.GetRuntime().GetEnv())
+		_ = runtimeCfg.Set("http_key", rnc.GetRuntime().GetHTTPKey())
+		_ = cfgObj.Set("runtime", runtimeCfg)
+
+		// IAP
+		iapAppleCfg := r.NewObject()
+		_ = iapAppleCfg.Set("shared_password", rnc.GetIAP().GetApple().GetSharedPassword())
+		_ = iapAppleCfg.Set("notifications_endpoint_id", rnc.GetIAP().GetApple().GetNotificationsEndpointId())
+
+		iapGoogleCfg := r.NewObject()
+		_ = iapGoogleCfg.Set("client_email", rnc.GetIAP().GetGoogle().GetClientEmail())
+		_ = iapGoogleCfg.Set("private_key", rnc.GetIAP().GetGoogle().GetPrivateKey())
+		_ = iapGoogleCfg.Set("notifications_endpoint_id", rnc.GetIAP().GetGoogle().GetNotificationsEndpointId())
+		_ = iapGoogleCfg.Set("refund_check_period_min", rnc.GetIAP().GetGoogle().GetRefundCheckPeriodMin())
+		_ = iapGoogleCfg.Set("package_name", rnc.GetIAP().GetGoogle().GetPackageName())
+
+		iapHuaweiCfg := r.NewObject()
+		_ = iapHuaweiCfg.Set("public_key", rnc.GetIAP().GetHuawei().GetPublicKey())
+		_ = iapHuaweiCfg.Set("client_id", rnc.GetIAP().GetHuawei().GetClientID())
+		_ = iapHuaweiCfg.Set("client_secret", rnc.GetIAP().GetHuawei().GetClientSecret())
+
+		iapFacebookInstantCfg := r.NewObject()
+		_ = iapFacebookInstantCfg.Set("app_secret", rnc.GetIAP().GetFacebookInstant().GetAppSecret())
+		iapCfg := r.NewObject()
+		_ = iapCfg.Set("apple", iapAppleCfg)
+		_ = iapCfg.Set("google", iapGoogleCfg)
+		_ = iapCfg.Set("huawei", iapHuaweiCfg)
+		_ = iapCfg.Set("facebook_instant", iapFacebookInstantCfg)
+		_ = cfgObj.Set("iap", iapCfg)
+
+		googleAuthCfg := r.NewObject()
+		_ = googleAuthCfg.Set("credentials_json", rnc.GetGoogleAuth().GetCredentialsJSON())
+		_ = cfgObj.Set("google_auth", googleAuthCfg)
+
+		satoriCfg := r.NewObject()
+		_ = satoriCfg.Set("url", rnc.GetSatori().GetUrl())
+		_ = satoriCfg.Set("api_key_name", rnc.GetSatori().GetApiKeyName())
+		_ = satoriCfg.Set("api_key", rnc.GetSatori().GetApiKey())
+		_ = satoriCfg.Set("signing_key", rnc.GetSatori().GetSigningKey())
+		_ = cfgObj.Set("satori", satoriCfg)
+
+		return cfgObj
+	}
+}
+
 func (im *RuntimeJavascriptInitModule) registerRpc(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
 	return func(f goja.FunctionCall) goja.Value {
 		fName := f.Argument(0)
@@ -358,6 +465,7 @@ func (im *RuntimeJavascriptInitModule) getRegisteredFnIdentifier(r *goja.Runtime
 				return s, nil
 			}
 		}
+
 		if expStat, ok := exp.(*ast.ExpressionStatement); ok {
 			if callExp, ok := expStat.Expression.(*ast.CallExpression); ok {
 				if callee, ok := callExp.Callee.(*ast.DotExpression); ok {
@@ -377,6 +485,8 @@ func (im *RuntimeJavascriptInitModule) getRegisteredFnIdentifier(r *goja.Runtime
 							return modNameArg.Name.String(), nil
 						} else if modNameArg, ok := callExp.ArgumentList[1].(*ast.StringLiteral); ok {
 							return modNameArg.Value.String(), nil
+						} else if modNameArg, ok := callExp.ArgumentList[1].(*ast.DotExpression); ok {
+							return string(modNameArg.Identifier.Name), nil
 						} else {
 							return "", inlinedFunctionError
 						}
@@ -395,6 +505,14 @@ func (im *RuntimeJavascriptInitModule) registerBeforeGetAccount(r *goja.Runtime)
 
 func (im *RuntimeJavascriptInitModule) registerAfterGetAccount(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
 	return im.registerHook(r, RuntimeExecutionModeAfter, "registerAfterGetAccount", "getaccount")
+}
+
+func (im *RuntimeJavascriptInitModule) registerBeforeGetMatchmakerStats(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
+	return im.registerHook(r, RuntimeExecutionModeBefore, "registerBeforeGetMatchmakerStats", "getmatchmakerstats")
+}
+
+func (im *RuntimeJavascriptInitModule) registerAfterGetMatchmakerStats(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
+	return im.registerHook(r, RuntimeExecutionModeAfter, "registerAfterGetMatchmakerStats", "getmatchmakerstats")
 }
 
 func (im *RuntimeJavascriptInitModule) registerBeforeUpdateAccount(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
@@ -483,6 +601,14 @@ func (im *RuntimeJavascriptInitModule) registerBeforeAuthenticateSteam(r *goja.R
 
 func (im *RuntimeJavascriptInitModule) registerAfterAuthenticateSteam(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
 	return im.registerHook(r, RuntimeExecutionModeAfter, "registerAfterAuthenticateSteam", "authenticatesteam")
+}
+
+func (im *RuntimeJavascriptInitModule) registerBeforeSessionRefresh(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
+	return im.registerHook(r, RuntimeExecutionModeBefore, "registerBeforeSessionRefresh", "sessionrefresh")
+}
+
+func (im *RuntimeJavascriptInitModule) registerAfterSessionRefresh(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
+	return im.registerHook(r, RuntimeExecutionModeAfter, "registerAfterSessionRefresh", "sessionrefresh")
 }
 
 func (im *RuntimeJavascriptInitModule) registerBeforeListChannelMessages(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
@@ -1732,14 +1858,23 @@ func (im *RuntimeJavascriptInitModule) getMatchHookFnIdentifier(r *goja.Runtime,
 						}
 
 						for _, prop := range obj.Value {
-							key, _ := prop.(*ast.PropertyKeyed).Key.(*ast.StringLiteral)
-							if key.Literal == string(matchfnId) {
-								if sl, ok := prop.(*ast.PropertyKeyed).Value.(*ast.StringLiteral); ok {
-									return sl.Literal, nil
-								} else if id, ok := prop.(*ast.PropertyKeyed).Value.(*ast.Identifier); ok {
-									return id.Name.String(), nil
-								} else {
-									return "", inlinedFunctionError
+							if propKeyed, ok := prop.(*ast.PropertyKeyed); ok {
+								if key, ok := propKeyed.Key.(*ast.StringLiteral); ok {
+									if key.Literal == string(matchfnId) {
+										if sl, ok := propKeyed.Value.(*ast.StringLiteral); ok {
+											return sl.Literal, nil
+										} else if id, ok := propKeyed.Value.(*ast.Identifier); ok {
+											return id.Name.String(), nil
+										} else {
+											return "", inlinedFunctionError
+										}
+									}
+								}
+							}
+
+							if propShort, ok := prop.(*ast.PropertyShort); ok {
+								if string(propShort.Name.Name) == string(matchfnId) {
+									return string(propShort.Name.Name), nil
 								}
 							}
 						}

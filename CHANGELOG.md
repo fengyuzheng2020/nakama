@@ -4,9 +4,76 @@ All notable changes to this project are documented below.
 The format is based on [keep a changelog](http://keepachangelog.com) and this project uses [semantic versioning](http://semver.org).
 
 ## [Unreleased]
+
+## [3.25.0] - 2024-11-25
+### Added
+- Add new runtime function to get a list of user's friend status.
+- Add new Follow/Unfollow runtime APIs.
+- Add new NotificationsUpdate runtime API.
+- Add new initializers function to get config values.
+
+### Changed
+- Increase limit of runtime friend listing operations to 1,000.
+- Leaving a group is now treated as a deletion when done by the last member.
+- Build with Go 1.23.3.
+
+### Fixed
+- Add missing JavaScript runtime SessionRefresh before/after hook functions.
+- Correct text in tournament creation error messages.
+- Improve copying of internal configuration before display to devconsole.
+- Close group channel sooner when group is deleted.
+
+## [3.24.2] - 2024-10-22
+### Fixed
+- Correctly display MFA-related configuration in devconsole UI.
+- Correctly extract RPC function identifiers.
+
+## [3.24.1] - 2024-10-21
+### Changed
+- Build with correct version of Protobuf dependency.
+
+## [3.24.0] - 2024-10-21
+### Added
+- New runtime function to list user notifications.
+- Support for runtime registration of custom HTTP handlers.
+
+### Changed
+- Increased limit on runtimes group users list functions.
+- Added pagination support to storage index listing.
+- Update runtime Satori client for latest API changes.
+- Build with Go 1.23.2.
+
+### Fixed
+- Ensure matchmaker stats behave correctly if matchmaker becomes fully empty and idle.
+- Correctly clear rank cache entries on account deletion.
+- Only display owned purchases in the console account tab.
+- Correctly infer X-Forwarded-For headers on Satori Authenticate calls in JS/Lua runtimes.
+
+## [3.23.0] - 2024-07-27
+### Added
+- Add devconsole view to list and search purchases across users.
+- Add devconsole view to list and search subscriptions across users.
+- Add function to get notifications by identifier to Go runtime.
+- Add function to get notifications by identifier to Lua runtime.
+- Add function to get notifications by identifier to TypeScript/JavaScript runtime.
+- Add function to delete notifications by identifier to Go runtime.
+- Add function to delete notifications by identifier to Lua runtime.
+- Add function to delete notifications by identifier to TypeScript/JavaScript runtime.
+- Add runtime function to disable ranks for an active leaderboard.
+- Add new matchmaker stats API.
+- Add support for specifying session vars in devconsole API explorer calls.
+
+### Changed
+- Add leaderboard create function parameter to enable or disable ranks.
+- Add tournament create function parameter to enable or disable ranks.
+- Obfuscate further fields when viewing server configuration in the devconsole.
+- Build with Go 1.22.5.
+
 ### Fixed
 - Correctly wire Go runtime shutdown function context.
-- Fix friends of friends api error when user has no friends.
+- Fix friends of friends API error when user has no friends.
+- Fix group listing pagination if name filter is used.
+- Correctly register friends of friends API before/after hooks.
 
 ## [3.22.0] - 2024-06-09
 ### Added

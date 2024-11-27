@@ -17,6 +17,7 @@ package sample
 import (
 	"context"
 	"database/sql"
+	"net/http"
 
 	"github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/rtapi"
@@ -56,6 +57,12 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return err
 	}
 	logger.Info(" ------------------------------------------------------------------ ")
+
+	if err := initializer.RegisterHttp("/test", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("handling twat"))
+	}); err != nil {
+		return err
+	}
 
 	return nil
 }

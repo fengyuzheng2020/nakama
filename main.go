@@ -39,6 +39,10 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/protobuf/encoding/protojson"
+
+	_ "github.com/klauspost/compress"
+	_ "github.com/prometheus/client_golang/prometheus"
+	_ "github.com/prometheus/common/model"
 )
 
 const cookieFilename = ".cookie"
@@ -115,7 +119,12 @@ func main() {
 			}
 			return
 		case "healthcheck":
-			resp, err := http.Get("http://localhost:7350")
+			port := "7350"
+			if len(os.Args) > 2 {
+				port = os.Args[2]
+			}
+
+			resp, err := http.Get("http://localhost:" + port)
 			if err != nil || resp.StatusCode != http.StatusOK {
 				tmpLogger.Fatal("healthcheck failed")
 			}

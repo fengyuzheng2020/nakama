@@ -58,10 +58,11 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
       }
     }
     security: {
-      // Made up security so we can apply "Bearer <JWT_TOKEN>"
-      key: "BearerJwt";
+      key: "BearerJwt"
       value: {
-        type: TYPE_INVALID;
+        type: TYPE_API_KEY
+        in: IN_HEADER
+        name: "Authorization"
       }
     }
     security: {
@@ -343,6 +344,11 @@ service Nakama {
   // Get subscription by product id.
   rpc GetSubscription (api.GetSubscriptionRequest) returns (api.ValidatedSubscription) {
     option (google.api.http).get = "/v2/iap/subscription/{product_id}";
+  }
+
+  // Get matchmaker stats.
+  rpc GetMatchmakerStats (google.protobuf.Empty) returns (api.MatchmakerStats) {
+    option (google.api.http).get = "/v2/matchmaker/stats";
   }
 
   // A healthcheck which load balancers can use to check the service.
