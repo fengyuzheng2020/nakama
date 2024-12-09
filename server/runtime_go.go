@@ -2902,7 +2902,7 @@ func NewRuntimeProviderGo(ctx context.Context, logger, startupLogger *zap.Logger
 	err := sample.InitModule(ctx, runtimeLogger, db, nk, initializer)
 	if err != nil {
 		startupLogger.Fatal("Error returned by InitModule function in Go module", zap.String("name", "sample"), zap.Error(err))
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	modulePaths := make([]string, 0)
 	for _, path := range paths {

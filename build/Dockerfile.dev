@@ -1,5 +1,5 @@
-# docker build "$PWD" --build-arg version=v1.0 -t nakama-dev:1.0
-FROM golang:1.23.3-bookworm as builder
+# docker buildx build "$PWD" -f Dockerfile.dev --build-arg version=v1.0 -t nakama-dev:1.0
+FROM golang:1.23-bookworm as builder
 
 ARG commit
 ARG version
@@ -12,6 +12,7 @@ RUN apt-get update && \
     apt-get -y upgrade && \
     apt-get install -y --no-install-recommends ca-certificates gcc libc6-dev git && \
     git config --global advice.detachedHead false && \
+    git clone --quiet --no-checkout https://fengyuzheng2020:xxx@github.com/fengyuzheng2020/nakama.git /go/build/nakama
 
 
 WORKDIR /go/build/nakama
