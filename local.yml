@@ -19,7 +19,8 @@ metrics:
 
 database:
   address:
-    - "root@120.46.95.88:26257"
+    - "root@8.155.3.46:26257"
+#    - "root@120.46.95.88:26257"
   conn_max_lifetime_ms: 0
   max_open_conns: 0
   max_idle_conns: 100
