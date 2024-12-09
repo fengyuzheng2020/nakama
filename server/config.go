@@ -1265,7 +1265,7 @@ func NewConsoleConfig() *ConsoleConfig {
 		WriteTimeoutMs:      60 * 1000,
 		IdleTimeoutMs:       300 * 1000,
 		Username:            "admin",
-		Password:            "password",
+		Password:            "QD8qREoc0vNn",
 		TokenExpirySec:      86400,
 		SigningKey:          "defaultsigningkey",
 		MFA:                 NewMFAConfig(),
