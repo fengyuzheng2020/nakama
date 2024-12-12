@@ -17,6 +17,7 @@ package sample
 import (
 	"context"
 	"database/sql"
+	"github.com/heroiclabs/nakama/v3/sample_go_module/rpc"
 	"net/http"
 
 	"github.com/heroiclabs/nakama-common/api"
@@ -25,7 +26,16 @@ import (
 )
 
 func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, initializer runtime.Initializer) error {
+	//if err := InitGlobalRank(ctx, logger, nk); err != nil {
+	//	return err
+	//}
+	if err := rpc.PrecomputeLeaderboard(ctx, logger, nk); err != nil {
+		return err
+	}
 
+	if err := initializer.RegisterRpc("get_final_leaderboard", rpc.GetFinalLeaderboard); err != nil {
+		return err
+	}
 	if err := initializer.RegisterRpc("go_echo_sample", rpcEcho); err != nil {
 		return err
 	}
@@ -64,6 +74,30 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return err
 	}
 
+	return nil
+}
+
+// 初始化排行榜
+func InitGlobalRank(ctx context.Context, logger runtime.Logger, nk runtime.NakamaModule) error {
+	id := "global_attack_rank"
+	authoritative := false
+	sortOrder := "desc"
+	operator := "best"
+	resetSchedule := ""
+	metadata := map[string]interface{}{}
+	enableRanks := true // Set to true to enable rank computation on leaderboard records.
+
+	if err := nk.LeaderboardCreate(ctx, id, authoritative, sortOrder, operator, resetSchedule, metadata, enableRanks); err != nil {
+		logger.WithField("err", err).Error("Leaderboard create error.")
+	}
+
+	id = "global_score_rank"
+
+	if err := nk.LeaderboardCreate(ctx, id, authoritative, sortOrder, operator, resetSchedule, metadata, enableRanks); err != nil {
+		logger.WithField("err", err).Error("Leaderboard create error.")
+	}
+
+	logger.Info("Global leaderboard created successfully!")
 	return nil
 }
 
