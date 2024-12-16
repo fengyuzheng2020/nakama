@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/runtime"
+	"github.com/heroiclabs/nakama/v3/sample_go_module/cache"
 	"github.com/heroiclabs/nakama/v3/sample_go_module/define"
+	"github.com/heroiclabs/nakama/v3/sample_go_module/model"
+	"github.com/heroiclabs/nakama/v3/sample_go_module/utils"
 	sort "sort"
 )
 
@@ -48,8 +51,15 @@ func GetPlayersStorageData(ctx context.Context, nk runtime.NakamaModule, userIDs
 	return result, nil
 }
 
+// 获取排行榜数据
 func GetFinalLeaderboard(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	logger.Info("Precomputing final leaderboard...")
+	req := &model.CommonReq{}
+	err := utils.ParseJsonParam(payload, req)
+	if err != nil {
+		logger.Error("Failed to parse json param: %v", err)
+		return "", err
+	}
 	// 从缓存中读取最终排行榜
 	objects, err := nk.StorageRead(ctx, []*runtime.StorageRead{
 		{
@@ -62,14 +72,23 @@ func GetFinalLeaderboard(ctx context.Context, logger runtime.Logger, db *sql.DB,
 		return "", err
 	}
 
+	resp := &model.GetRankResp{
+		UserScore: model.UserScore{},
+		RankInfo:  objects[0].Value,
+	}
+	v, ok := cache.UserCacheInstance.Get(req.UserId)
+	if ok {
+		resp.UserScore = v.UserScore
+	}
+	r, _ := json.Marshal(resp)
 	// 返回 JSON 数据
-	return objects[0].Value, nil
+	return string(r), nil
 }
 
 func PrecomputeLeaderboard(ctx context.Context, logger runtime.Logger, nk runtime.NakamaModule) error {
 	cursor := ""
 	limit := 1000
-	finalLeaderboard := []map[string]interface{}{}
+	finalLeaderboard := []model.UserScore{}
 
 	for {
 		records, nextCursor, err := FetchPaginatedPowerRankings(ctx, logger, nk, limit, cursor)
@@ -111,7 +130,18 @@ func PrecomputeLeaderboard(ctx context.Context, logger runtime.Logger, nk runtim
 
 	// 对总积分排序
 	finalLeaderboard = SortByTotalScores(finalLeaderboard)
-
+	for _, score := range finalLeaderboard {
+		// 缓存
+		if v, ok := cache.UserCacheInstance.Get(score.UserId); ok {
+			v.UserScore = score
+			cache.UserCacheInstance.Set(score.UserId, v)
+		} else {
+			cache.UserCacheInstance.Set(score.UserId, model.UserCacheData{
+				UserId:    score.UserId,
+				UserScore: score,
+			})
+		}
+	}
 	finalLeaderboardBytes, _ := json.Marshal(map[string]interface{}{
 		"finalRankings": finalLeaderboard,
 	})
@@ -133,24 +163,19 @@ func PrecomputeLeaderboard(ctx context.Context, logger runtime.Logger, nk runtim
 	return nil
 }
 
-func SortByTotalScores(totalScores []map[string]interface{}) []map[string]interface{} {
+func SortByTotalScores(totalScores []model.UserScore) []model.UserScore {
 	sort.Slice(totalScores, func(i, j int) bool {
-		return totalScores[i]["totalScore"].(int) > totalScores[j]["totalScore"].(int)
+		return totalScores[i].TotalScore > totalScores[j].TotalScore
 	})
 	return totalScores
 }
 
-func CalculateTotalScores(powerScores, playerScores map[string]int) []map[string]interface{} {
-	totalScores := make([]map[string]interface{}, 0)
+func CalculateTotalScores(powerScores, playerScores map[string]int) []model.UserScore {
+	totalScores := make([]model.UserScore, 0)
 	for userID, powerScore := range powerScores {
 		existingScore := playerScores[userID]
 		totalScore := powerScore + existingScore
-		totalScores = append(totalScores, map[string]interface{}{
-			"userId":        userID,
-			"powerScore":    powerScore,
-			"existingScore": existingScore,
-			"totalScore":    totalScore,
-		})
+		totalScores = append(totalScores, model.UserScore{UserId: userID, PowerScore: powerScore, ExistingScore: existingScore, TotalScore: totalScore})
 	}
 	return totalScores
 }
