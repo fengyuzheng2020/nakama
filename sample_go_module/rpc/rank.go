@@ -113,7 +113,7 @@ func PrecomputeLeaderboard(ctx context.Context, logger runtime.Logger, nk runtim
 	finalLeaderboard = SortByTotalScores(finalLeaderboard)
 
 	finalLeaderboardBytes, _ := json.Marshal(map[string]interface{}{
-		"final_rankings": finalLeaderboard,
+		"finalRankings": finalLeaderboard,
 	})
 	// 存储到 Nakama
 	_, err := nk.StorageWrite(ctx, []*runtime.StorageWrite{
@@ -135,7 +135,7 @@ func PrecomputeLeaderboard(ctx context.Context, logger runtime.Logger, nk runtim
 
 func SortByTotalScores(totalScores []map[string]interface{}) []map[string]interface{} {
 	sort.Slice(totalScores, func(i, j int) bool {
-		return totalScores[i]["total_score"].(int) > totalScores[j]["total_score"].(int)
+		return totalScores[i]["totalScore"].(int) > totalScores[j]["totalScore"].(int)
 	})
 	return totalScores
 }
@@ -146,10 +146,10 @@ func CalculateTotalScores(powerScores, playerScores map[string]int) []map[string
 		existingScore := playerScores[userID]
 		totalScore := powerScore + existingScore
 		totalScores = append(totalScores, map[string]interface{}{
-			"user_id":        userID,
-			"power_score":    powerScore,
-			"existing_score": existingScore,
-			"total_score":    totalScore,
+			"userId":        userID,
+			"powerScore":    powerScore,
+			"existingScore": existingScore,
+			"totalScore":    totalScore,
 		})
 	}
 	return totalScores
